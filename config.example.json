@@ -1,0 +1,26 @@
+{
+  "teamId": "b6f87d61-69e0-459b-ba68-a322281b9805",
+  "teamName": "Popcorn",
+  "boardId": 1314,
+  "githubOrg": "ubitransports",
+  "jiraBaseUrl": "https://ubitransport.atlassian.net/browse/",
+  "staleThresholdsWorkdays": {
+    "IN_PROGRESS": 3,
+    "IN_REVIEW": 2,
+    "IN_QA": 2
+  },
+  "prStaleReviewHours": 24,
+  "frenchHolidays2026": [
+    "2026-01-01",
+    "2026-04-06",
+    "2026-05-01",
+    "2026-05-08",
+    "2026-05-14",
+    "2026-05-25",
+    "2026-07-14",
+    "2026-08-15",
+    "2026-11-01",
+    "2026-11-11",
+    "2026-12-25"
+  ]
+}

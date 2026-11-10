@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Popcorn Daily — Guide d'Animation</title>
+  <link rel="stylesheet" href="/styles.css?v=2.2.0" />
+</head>
+<body>
+  <div id="appShell" class="app-shell">
+    <!-- LEFT SIDEBAR: L'Agenda du Jour (Uniquement ce qui a bougé hier ou qui attend) -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-brand">
+          <div>
+            <div class="brand-row">
+              <span class="brand-icon">🍿</span>
+              <h1 id="sprintTitle">Popcorn Daily</h1>
+              <span id="versionBadge" class="badge badge-subtle">v2.2.0</span>
+            </div>
+            <p id="sprintSubtitle" class="subtitle">Chargement de l'agenda...</p>
+          </div>
+          <div class="header-actions">
+            <select id="dateSelect" class="select-xs" title="Date du Daily"></select>
+            <button id="themeToggleBtn" class="btn btn-ghost btn-xs" title="Thème Sombre / Papier (t)">Thème</button>
+          </div>
+        </div>
+
+        <!-- Mini Sprint Progress Bar -->
+        <div class="mini-meter">
+          <div id="miniMeterLabels" class="mini-meter-labels"></div>
+          <div id="miniMeterBar" class="mini-meter-bar"></div>
+        </div>
+      </div>
+
+      <!-- Sidebar Filters: Agenda du Jour vs R.A.S. -->
+      <div class="sidebar-filters">
+        <input
+          type="search"
+          id="searchInput"
+          class="search-input"
+          placeholder="Rechercher PRD-*, prénom, sujet... (/)"
+        />
+        <div class="filter-tabs" id="sidebarFilterTabs">
+          <button class="filter-tab active" data-tab="agenda" title="Stories ayant évolué la veille ou en attente d'action">
+            🎯 Agenda du Jour <span id="count-agenda" class="count-pill count-alert">0</span>
+          </button>
+          <button class="filter-tab" data-tab="tasks" title="Tâches & Bugs hors Story à aborder">
+            🔧 Tâches à voir <span id="count-tasks" class="count-pill">0</span>
+          </button>
+          <button class="filter-tab" data-tab="ras" title="Stories en cours normal ou non commencées (R.A.S.)">
+            😌 R.A.S. / Autres <span id="count-ras" class="count-pill">0</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Ordered Agenda List -->
+      <div class="story-list" id="storyList">
+        <div class="empty-state">Chargement de l'agenda...</div>
+      </div>
+
+      <!-- Sidebar Footer Shortcuts -->
+      <div class="sidebar-footer">
+        <span><kbd>j</kbd>/<kbd>k</kbd> Naviguer</span>
+        <span><kbd>Espace</kbd> Sujet traité ➔ Suivant</span>
+        <span id="reviewedProgressLabel" style="margin-left:auto;font-weight:700">0/0 traités</span>
+      </div>
+    </aside>
+
+    <!-- RIGHT MAIN STAGE: La Carte de Parole (3 Blocs Ultra-Simples) -->
+    <main class="main-area">
+      <!-- Top Mode Bar -->
+      <header class="main-topbar">
+        <div class="mode-tabs" id="modeTabs">
+          <button class="mode-tab active" data-mode="story">
+            <kbd>1</kbd> 🎙️ Guide d'Animation (Story par Story)
+          </button>
+          <button class="mode-tab" data-mode="members">
+            <kbd>2</kbd> 👥 Vue par Membre de l'équipe
+          </button>
+        </div>
+
+        <div class="main-topbar-right">
+          <button id="openSetupBtn" class="btn btn-ghost btn-xs" title="Configurer mes accès Jira & GitHub">
+            ⚙️ Accès
+          </button>
+          <button id="refreshBtn" class="btn btn-primary btn-xs" title="Synchroniser Jira & GitHub (r)">
+            <span id="refreshSpinner" class="spinner hidden"></span>
+            <span>🔄 Sync</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- MODE 1: CONVERSATIONAL 3-BLOCK STORY GUIDE (DEFAULT) -->
+      <section id="mode-story" class="stage-content">
+        <div id="storyDetailStage" class="story-detail-container"></div>
+      </section>
+
+      <!-- MODE 2: BY TEAM MEMBER -->
+      <section id="mode-members" class="stage-content hidden">
+        <div id="membersStage" class="story-detail-container"></div>
+      </section>
+    </main>
+
+    <!-- ZERO-TECH PO ONBOARDING MODAL -->
+    <div id="setupModal" class="modal-backdrop hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div>
+            <h2>🍿 Bienvenue sur Popcorn Daily — Configuration Rapide (1 min)</h2>
+            <p class="subtitle">À faire une seule fois sur ton Mac. Aucun outil technique à installer !</p>
+          </div>
+          <button id="closeSetupBtn" class="btn btn-ghost btn-xs">✕ Fermer</button>
+        </div>
+
+        <div id="setupErrorBanner" class="setup-error hidden"></div>
+
+        <div class="setup-steps">
+          <div class="setup-step">
+            <label class="setup-label">1️⃣ Ton adresse email Jira (Matawan / Ubitransport)</label>
+            <input type="email" id="cfgEmail" class="setup-input" placeholder="prenom.nom@matawan-mobility.com" />
+          </div>
+
+          <div class="setup-step">
+            <div class="setup-step-top">
+              <label class="setup-label">2️⃣ Ton Token Jira (Atlassian)</label>
+              <a class="inline-jira-link" href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noopener">
+                ↗ Créer mon Token Jira en 2 clics
+              </a>
+            </div>
+            <p class="setup-help">
+              Clique sur le lien bleu ci-dessus ➔ <strong>"Create API token"</strong> ➔ nomme-le <em>Popcorn Daily</em> ➔ copie-colle le code généré ici :
+            </p>
+            <input type="password" id="cfgJiraToken" class="setup-input" placeholder="Colle ton token Jira ici (ex: ATATT3xFfGF0...)" />
+          </div>
+
+          <div class="setup-step">
+            <div class="setup-step-top">
+              <label class="setup-label">3️⃣ Ton Token GitHub <em>(optionnel, pour voir l'état des PRs)</em></label>
+              <a class="inline-jira-link" href="https://github.com/settings/tokens/new?description=Popcorn+Daily&scopes=repo,read:org" target="_blank" rel="noopener">
+                ↗ Créer mon Token GitHub pré-rempli
+              </a>
+            </div>
+            <p class="setup-help">
+              Clique sur le lien ci-dessus ➔ descends tout en bas et clique sur le bouton vert <strong>"Generate token"</strong> ➔ copie-colle le code <code>ghp_...</code> ici :
+            </p>
+            <input type="password" id="cfgGithubToken" class="setup-input" placeholder="Colle ton token GitHub ici (ex: ghp_...)" />
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button id="saveSetupBtn" class="btn-action-bar btn-action-jira" style="max-width:100%">
+            🚀 Enregistrer mes accès et lancer le Daily
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+  </div>
+
+  <script src="/app.js?v=2.2.0"></script>
+</body>
+</html>
