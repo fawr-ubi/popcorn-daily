@@ -7,7 +7,7 @@ const state = {
   searchQuery: '',
   selectedKey: null,
   reviewedKeys: new Set(),
-  expandedDetailsKeys: new Set(), // Technical subtask drawer is collapsed by default for maximum clarity!
+  collapsedDetailsKeys: new Set(), // Technical subtask drawer is expanded by default
   theme: localStorage.getItem('popcorn-daily-theme') || 'dark',
 };
 
@@ -86,7 +86,6 @@ function buildConversationalGuide(item) {
   const allTasks = [st, ...children];
 
   const facts = [];
-  const questions = [];
   const jiraActions = []; // { key, targetStatus, label }
   const reasonPills = [];
 
@@ -113,16 +112,12 @@ function buildConversationalGuide(item) {
     facts.push(
       `🧪 <strong>En cours de recette QA :</strong> ${personBadge(TEAM_QA_NAME)} est actuellement en train de tester ${jiraLink(st.key)} (statut <strong>${escapeHtml(st.status)}</strong> depuis &lt; 2j ouvrés).`
     );
-    questions.push(
-      `${personBadge(TEAM_QA_NAME)} teste actuellement ${jiraLink(st.key)} — R.A.S. (on n'en reparle que si un bug est trouvé ou si la recette dépasse 2j).`
-    );
     return {
       isOnAgenda: false,
       priorityGroup: 90,
       priorityHeader: '😌 R.A.S. (En test QA par Christel / En cours normal / Non démarrées)',
       reasonPills: [{ text: '🧪 En test (Christel)', cls: 'reason-moved' }],
       facts,
-      questions,
       jiraActions,
     };
   }
@@ -157,9 +152,6 @@ function buildConversationalGuide(item) {
       st.assignee !== 'Unassigned'
         ? st.assignee
         : children[children.length - 1]?.assignee || null;
-    questions.push(
-      `Demander à ${personBadge(owner)} : Toutes les sous-tâches sont terminées et mergées. Est-ce qu'on peut passer la Story ${jiraLink(st.key)} en <strong>Waiting for QA</strong> pour ${personBadge(TEAM_QA_NAME)} ?`
-    );
     addJiraAction(st.key, 'Waiting for QA');
   }
 
@@ -176,9 +168,6 @@ function buildConversationalGuide(item) {
         `🟣 <strong>PR mergée sur GitHub :</strong> La PR ${prStr} sur ${jiraLink(a.key)} est mergée (0 PR ouverte), mais le ticket Jira est toujours en <strong>${escapeHtml(a.status)}</strong>.`
       );
       if (!storyReadyForQa || a.key !== st.key) {
-        questions.push(
-          `Voir avec ${personBadge(a.assignee)} : Ta PR ${prStr} est bien mergée. On passe ${jiraLink(a.key)} au statut <strong>${escapeHtml(a.suggestedStatus)}</strong> ?`
-        );
         addJiraAction(a.key, a.suggestedStatus);
       }
     } else if (a.rule === 'PR_APPROVED_READY_TO_MERGE') {
@@ -186,9 +175,6 @@ function buildConversationalGuide(item) {
       const prStr = a.prs.map((p) => prInlineLink(p)).join(', ');
       facts.push(
         `✅ <strong>PR approuvée en attente de merge :</strong> La PR ${prStr} sur ${jiraLink(a.key)} est <strong>APPROVED</strong>, mais le ticket est toujours en <strong>${escapeHtml(a.status)}</strong>.`
-      );
-      questions.push(
-        `Demander à ${personBadge(a.assignee)} : Ta PR ${prStr} sur ${jiraLink(a.key)} est approuvée. Qu'est-ce qu'il manque pour la merger aujourd'hui (ou passer le ticket en <strong>Waiting Merge</strong>) ?`
       );
       addJiraAction(a.key, a.suggestedStatus);
     } else if (a.rule === 'OPEN_PR_NOT_IN_REVIEW') {
@@ -200,11 +186,6 @@ function buildConversationalGuide(item) {
       const prStr = a.prs.map((p) => prInlineLink(p)).join(', ');
       facts.push(
         `🟢 <strong>PR ouverte sur GitHub :</strong> ${prStr} est ${allApproved ? '<strong>approuvée</strong>' : 'ouverte en attente de review'}, mais ${jiraLink(a.key)} est encore au statut <strong>${escapeHtml(a.status)}</strong>.`
-      );
-      questions.push(
-        allApproved
-          ? `Demander à ${personBadge(a.assignee)} : La PR ${prStr} est approuvée. Peut-on la merger et passer ${jiraLink(a.key)} en <strong>${escapeHtml(a.suggestedStatus)}</strong> ?`
-          : `Demander à ${personBadge(a.assignee)} & à l'équipe : La PR ${prStr} est prête pour review. On passe ${jiraLink(a.key)} en <strong>Revue en cours</strong> et qui prend la review ?`
       );
       addJiraAction(a.key, a.suggestedStatus);
     }
@@ -226,9 +207,6 @@ function buildConversationalGuide(item) {
       const targetPerson = firstName(u.targetAssignee)
         ? personBadge(u.targetAssignee)
         : personBadge(null, `l'équipe ${u.targetRole}`);
-      questions.push(
-        `Voir avec ${targetPerson} : Maintenant que ${jiraLink(u.sourceKey)} est terminé, qui prend le relais sur ${jiraLink(u.targetKey)} (<em>${escapeHtml(u.targetSummary)}</em>) ?`
-      );
     }
   } else if (children.length > 0) {
     // Check if some subtasks are DONE and remaining subtasks are still "À faire" without nobody in progress
@@ -240,9 +218,6 @@ function buildConversationalGuide(item) {
       const nextKid = readyKids[0];
       facts.push(
         `🔓 <strong>Relais en attente :</strong> ${doneKids.map((c) => `${jiraLink(c.key)} (${escapeHtml(c.role)})`).join(', ')} est terminé, mais la tâche suivante ${jiraLink(nextKid.key)} (<em>${escapeHtml(nextKid.summary)}</em>) est toujours <strong>À faire</strong>.`
-      );
-      questions.push(
-        `Demander à ${personBadge(nextKid.assignee, `l'équipe ${nextKid.role}`)} : Qui peut démarrer la sous-tâche suivante ${jiraLink(nextKid.key)} (${escapeHtml(nextKid.role)}) pour faire avancer cette Story ?`
       );
     }
   }
@@ -276,49 +251,21 @@ function buildConversationalGuide(item) {
     if (!alreadyCoveredByPrAlert) {
       const openReviewPr = (s.prs || []).find((p) => p.state === 'OPEN' && !p.isDraft);
       if (openReviewPr && s.statusGroup === 'IN_REVIEW') {
-        questions.push(
-          `Demander à ${personBadge(s.assignee)} & à l'équipe : La PR ${prInlineLink(openReviewPr)} sur ${jiraLink(s.key)} attend en <strong>${escapeHtml(s.status)}</strong> depuis <strong>${s.workdays} jours ouvrés</strong>. Qui peut faire la code review aujourd'hui pour débloquer ?`
-        );
       } else if (s.statusGroup === 'IN_QA') {
         if (isCurrentlyInQaTesting(s.status)) {
-          questions.push(
-            `Point QA avec ${personBadge(TEAM_QA_NAME)} : ${jiraLink(s.key)} est en <strong>${escapeHtml(s.status)}</strong> depuis <strong>${s.workdays} jours ouvrés</strong>. Est-ce que la recette avance ou y a-t-il un point bloquant avec ${personBadge(s.assignee)} ?`
-          );
         } else {
-          questions.push(
-            `Voir avec ${personBadge(TEAM_QA_NAME)} : ${jiraLink(s.key)} attend en <strong>${escapeHtml(s.status)}</strong> depuis <strong>${s.workdays} jours ouvrés</strong>. Est-ce que tu peux la prendre en recette (<strong>In QA</strong>) ?`
-          );
           addJiraAction(s.key, 'In QA');
         }
       } else {
-        questions.push(
-          `Faire le point avec ${personBadge(s.assignee)} : ${jiraLink(s.key)} est en <strong>${escapeHtml(s.status)}</strong> depuis <strong>${s.workdays} jours ouvrés</strong> sans changement de statut. Y a-t-il un point dur où l'équipe peut aider ?`
-        );
       }
     }
   }
 
-  // If the item moved yesterday (e.g. moved to Waiting for QA or In Review or Done) and generated no specific question yet,
-  // add a natural follow-up question based on yesterday's transition!
-  if (facts.length > 0 && questions.length === 0 && item.movements.length > 0) {
+  // If the item moved yesterday to Waiting for QA, allow quick action
+  if (facts.length > 0 && item.movements.length > 0) {
     const lastMv = item.movements[item.movements.length - 1];
     if (isWaitingForQaPickup(lastMv.to)) {
-      questions.push(
-        `Voir avec ${personBadge(TEAM_QA_NAME)} (suite au passage en <strong>${escapeHtml(lastMv.to)}</strong> par ${personBadge(lastMv.author || lastMv.assignee)}) : ${jiraLink(lastMv.key)} est prêt pour la recette, peut-on le passer en <strong>In QA</strong> ?`
-      );
       addJiraAction(lastMv.key, 'In QA');
-    } else if (isCurrentlyInQaTesting(lastMv.to)) {
-      questions.push(
-        `Point rapide avec ${personBadge(TEAM_QA_NAME)} : ${jiraLink(lastMv.key)} est passé en <strong>${escapeHtml(lastMv.to)}</strong>. La recette se passe bien ?`
-      );
-    } else if (/revue|review/i.test(lastMv.to)) {
-      questions.push(
-        `Demander à l'équipe pour ${personBadge(lastMv.author || lastMv.assignee)} : ${jiraLink(lastMv.key)} est passé en <strong>Revue</strong> hier. Qui peut faire la code review aujourd'hui ?`
-      );
-    } else {
-      questions.push(
-        `Faire un point rapide avec ${personBadge(lastMv.author || lastMv.assignee)} suite au passage de ${jiraLink(lastMv.key)} en <strong>${escapeHtml(lastMv.to)}</strong> hier : quelle est la prochaine étape aujourd'hui ?`
-      );
     }
   }
 
@@ -369,11 +316,7 @@ function buildConversationalGuide(item) {
       `😌 <strong>R.A.S. ce matin :</strong> Aucun changement de statut hier et aucun dépassement de délai sur ${jiraLink(st.key)} (${escapeHtml(st.status)}).`
     );
   }
-  if (questions.length === 0) {
-    questions.push(
-      `Pas d'alerte particulière sur ${jiraLink(st.key)} aujourd'hui.`
-    );
-  }
+
 
   return {
     isOnAgenda,
@@ -381,7 +324,6 @@ function buildConversationalGuide(item) {
     priorityHeader,
     reasonPills: reasonPills.slice(0, 3),
     facts,
-    questions,
     jiraActions,
   };
 }
@@ -482,7 +424,6 @@ function filterItemsForTab(allItems) {
         item.story.summary,
         item.story.assignee,
         ...item.guide.facts,
-        ...item.guide.questions,
         ...item.children.map((c) => `${c.key} ${c.summary} ${c.assignee}`),
       ]
         .filter(Boolean)
@@ -665,7 +606,7 @@ function renderStoryGuideStage(tabItems) {
   const g = item.guide;
   const idx = tabItems.findIndex((i) => i.key === item.key);
   const isReviewed = state.reviewedKeys.has(item.key);
-  const isDetailsExpanded = state.expandedDetailsKeys.has(item.key);
+  const isDetailsExpanded = !state.collapsedDetailsKeys.has(item.key);
 
   const totalDetailsCount =
     item.children.length + (st.prs?.length || 0) + item.qaTests.length;
@@ -689,44 +630,6 @@ function renderStoryGuideStage(tabItems) {
         <span class="badge badge-subtle">${escapeHtml(headerOwnerLabel)}</span>
       </div>
       <h2 class="guide-title">${escapeHtml(st.summary)}</h2>
-    </div>
-
-    <!-- BLOC 1: POURQUOI ON EN PARLE CE MATIN (LE FAIT) -->
-    <div class="guide-block block-facts">
-      <h3 class="block-label">📍 1. Pourquoi on en parle ce matin (Ce qui a bougé hier / Ce qui attend)</h3>
-      <ul class="facts-list">
-        ${g.facts.map((f) => `<li>${f}</li>`).join('')}
-      </ul>
-    </div>
-
-    <!-- BLOC 2: DE QUOI PARLER (LA QUESTION EXACTE À POSER) -->
-    <div class="guide-block block-talk">
-      <h3 class="block-label">💬 2. De quoi parler avec l'équipe (Question à poser)</h3>
-      <ul class="talk-list">
-        ${g.questions.map((q) => `<li>${q}</li>`).join('')}
-      </ul>
-    </div>
-
-    <!-- BLOC 3: QUELLES ACTIONS RÉALISER EN 1 CLIC (3 boutons alignés de même taille) -->
-    <div class="guide-block block-actions">
-      <h3 class="block-label">⚡ 3. Actions rapides en séance</h3>
-      <div class="actions-grid">
-        <a class="btn-action-bar btn-open-jira" href="${escapeHtml(st.url)}" target="_blank" rel="noopener">
-          ↗ Ouvrir ${escapeHtml(st.key)} dans Jira
-        </a>
-        ${
-          primaryJiraAction
-            ? `
-          <button class="btn-action-bar btn-action-jira js-transition-btn" data-key="${escapeHtml(primaryJiraAction.key)}" data-status="${escapeHtml(primaryJiraAction.targetStatus)}">
-            ${escapeHtml(primaryJiraAction.label)}
-          </button>
-        `
-            : ''
-        }
-        <button class="btn-action-bar btn-next-subject" id="doneAndNextBtn">
-          ${isReviewed ? '✅ Sujet traité — Suivant →' : '✅ Sujet traité — Passer au suivant (Espace)'}
-        </button>
-      </div>
     </div>
 
     <!-- TIROIR TECHNIQUE REPLIÉ PAR DÉFAUT (SOUS-TÂCHES, PRs, QA) -->
@@ -779,6 +682,36 @@ function renderStoryGuideStage(tabItems) {
     `
         : ''
     }
+
+    <!-- BLOC 1: POURQUOI ON EN PARLE CE MATIN (LE FAIT) -->
+    <div class="guide-block block-facts">
+      <h3 class="block-label">📍 1. Pourquoi on en parle ce matin (Ce qui a bougé hier / Ce qui attend)</h3>
+      <ul class="facts-list">
+        ${g.facts.map((f) => `<li>${f}</li>`).join('')}
+      </ul>
+    </div>
+
+    <!-- BLOC 2: QUELLES ACTIONS RÉALISER EN 1 CLIC (3 boutons alignés de même taille) -->
+    <div class="guide-block block-actions">
+      <h3 class="block-label">⚡ 2. Actions rapides en séance</h3>
+      <div class="actions-grid">
+        <a class="btn-action-bar btn-open-jira" href="${escapeHtml(st.url)}" target="_blank" rel="noopener">
+          ↗ Ouvrir ${escapeHtml(st.key)} dans Jira
+        </a>
+        ${
+          primaryJiraAction
+            ? `
+          <button class="btn-action-bar btn-action-jira js-transition-btn" data-key="${escapeHtml(primaryJiraAction.key)}" data-status="${escapeHtml(primaryJiraAction.targetStatus)}">
+            ${escapeHtml(primaryJiraAction.label)}
+          </button>
+        `
+            : ''
+        }
+        <button class="btn-action-bar btn-next-subject" id="doneAndNextBtn">
+          ${isReviewed ? '✅ Sujet traité — Suivant →' : '✅ Sujet traité — Passer au suivant (Espace)'}
+        </button>
+      </div>
+    </div>
   `;
 
   const doneNextBtn = document.getElementById('doneAndNextBtn');
@@ -791,10 +724,10 @@ function renderStoryGuideStage(tabItems) {
   const drawerBtn = document.getElementById('toggleDetailsDrawerBtn');
   if (drawerBtn) {
     drawerBtn.addEventListener('click', () => {
-      if (state.expandedDetailsKeys.has(item.key)) {
-        state.expandedDetailsKeys.delete(item.key);
+      if (state.collapsedDetailsKeys.has(item.key)) {
+        state.collapsedDetailsKeys.delete(item.key);
       } else {
-        state.expandedDetailsKeys.add(item.key);
+        state.collapsedDetailsKeys.add(item.key);
       }
       renderAll();
     });
