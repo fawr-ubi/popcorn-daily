@@ -16,7 +16,7 @@
             <div class="brand-row">
               <span class="brand-icon">🍿</span>
               <h1 id="sprintTitle">Popcorn Daily</h1>
-              <span id="versionBadge" class="badge badge-subtle">v2.3.0</span>
+              <span id="versionBadge" class="badge badge-subtle">v2.3.1</span>
             </div>
             <p id="sprintSubtitle" class="subtitle">Chargement de l'agenda...</p>
           </div>
@@ -38,7 +38,12 @@
         <input
           type="search"
           id="searchInput"
+          name="popcorn_search"
           class="search-input"
+          autocomplete="off"
+          spellcheck="false"
+          data-1p-ignore="true"
+          data-bwignore="true"
           placeholder="Rechercher PRD-*, prénom, sujet... (/)"
         />
         <div class="filter-tabs" id="sidebarFilterTabs">
@@ -118,7 +123,7 @@
         <div class="setup-steps">
           <div class="setup-step">
             <label class="setup-label">1️⃣ Ton adresse email Jira (Matawan / Ubitransport)</label>
-            <input type="email" id="cfgEmail" class="setup-input" placeholder="prenom.nom@matawan-mobility.com" />
+            <input type="email" id="cfgEmail" name="cfgEmail" autocomplete="username" class="setup-input" placeholder="prenom.nom@matawan-mobility.com" />
           </div>
 
           <div class="setup-step">
@@ -131,7 +136,7 @@
             <p class="setup-help">
               Clique sur le lien bleu ci-dessus ➔ <strong>"Create API token"</strong> ➔ nomme-le <em>Popcorn Daily</em> ➔ copie-colle le code généré ici :
             </p>
-            <input type="password" id="cfgJiraToken" class="setup-input" placeholder="Colle ton token Jira ici (ex: ATATT3xFfGF0...)" />
+            <input type="password" id="cfgJiraToken" name="cfgJiraToken" autocomplete="new-password" class="setup-input" placeholder="Colle ton token Jira ici (ex: ATATT3xFfGF0...)" />
           </div>
 
           <div class="setup-step">
@@ -144,7 +149,7 @@
             <p class="setup-help">
               Clique sur le lien ci-dessus ➔ descends tout en bas et clique sur le bouton vert <strong>"Generate token"</strong> ➔ copie-colle le code <code>ghp_...</code> ici :
             </p>
-            <input type="password" id="cfgGithubToken" class="setup-input" placeholder="Colle ton token GitHub ici (ex: ghp_...)" />
+            <input type="password" id="cfgGithubToken" name="cfgGithubToken" autocomplete="new-password" class="setup-input" placeholder="Colle ton token GitHub ici (ex: ghp_...)" />
           </div>
         </div>
 
