@@ -7,6 +7,7 @@ const state = {
   searchQuery: '',
   selectedKey: null,
   reviewedKeys: new Set(),
+  celebratedTabs: new Set(),
   collapsedDetailsKeys: new Set(), // Technical subtask drawer is expanded by default
   theme: localStorage.getItem('popcorn-daily-theme') || 'dark',
 };
@@ -801,6 +802,20 @@ function toggleStoryReviewed(key) {
 function markDoneAndAdvance(tabItems) {
   if (!state.selectedKey) return;
   state.reviewedKeys.add(state.selectedKey);
+
+  // Trigger confetti if all items in the 'agenda' tab are now reviewed
+  if (state.sidebarTab === 'agenda' && !state.celebratedTabs.has('agenda')) {
+    const allReviewed = tabItems.every((item) => state.reviewedKeys.has(item.key));
+    if (allReviewed && typeof confetti === 'function') {
+      state.celebratedTabs.add('agenda');
+      confetti({
+        particleCount: 150,
+        spread: 80,
+        origin: { y: 0.6 },
+        zIndex: 9999,
+      });
+    }
+  }
 
   const idx = tabItems.findIndex((i) => i.key === state.selectedKey);
   // Find next unreviewed item, or simply next item
