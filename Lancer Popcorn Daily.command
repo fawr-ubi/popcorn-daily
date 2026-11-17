@@ -20,19 +20,24 @@ else
   exit 0
 fi
 
-# Auto-update quietly if inside a git repository with a remote
+# Auto-update quietly from GitHub
 if [ -d "${APP_DIR}/.git" ]; then
+  # For developers/users with git installed
   git -C "${APP_DIR}" pull --ff-only >/dev/null 2>&1 || true
+else
+  # For POs without git: download latest tarball and overwrite files
+  curl -fsSL "https://github.com/fawr-ubi/popcorn-daily/archive/refs/heads/main.tar.gz" | tar -xz -C "${APP_DIR}" --strip-components=1 2>/dev/null || true
 fi
 
 PORT=4343
 URL="http://localhost:${PORT}"
 
-# Check if server is already listening on port 4343
-if lsof -iTCP:${PORT} -sTCP:LISTEN -t >/dev/null 2>&1; then
-  echo "✅ Popcorn Daily tourne déjà sur ${URL}"
-  open "${URL}"
-  exit 0
+# Kill any ghost server still holding the port to ensure we run the newly downloaded code
+PIDS=$(lsof -iTCP:${PORT} -sTCP:LISTEN -t 2>/dev/null || true)
+if [ -n "${PIDS}" ]; then
+  echo "🔄 Redémarrage du serveur existant..."
+  kill -9 ${PIDS} 2>/dev/null || true
+  sleep 0.5
 fi
 
 echo "🍿 Démarrage de Popcorn Daily sur ${URL} ..."
